@@ -22,3 +22,123 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+#pragma once
+#include "SmartPointer.hpp"
+#include <stdint.h>
+
+namespace Memory
+{
+    /**
+     * Pointer wrapper that automatically deallocates memory when
+     * reference count to the pointed object drops to 0. This means
+     * that several client objects can point to the same data.
+     * @param T can be any type.
+     */
+    template<typename T>
+    class S_ptr : public SmartPointer<T>
+    {
+    public:
+        /**
+            * Initializes this S_ptr as nullptr.
+            */
+        S_ptr(void) = default;
+
+        /**
+            * Initializes this S_ptr with the provided pointer to data. If data not null,
+            * increases the reference count to 1.
+            * @param data pointer. Can be nullptr.
+            */
+        S_ptr(T* data) : SmartPointer<T>{ data }, _ref_count{ new uint16_t{ 0 } }
+        {
+            if (data != nullptr)
+            {
+                *_ref_count += 1;
+            }
+        }
+
+        S_ptr(const S_ptr<T>& other) : SmartPointer<T>{ other.get() }, _ref_count{ other._ref_count }
+        {
+            if (other.get() != nullptr)
+            {
+                *_ref_count += 1;
+            }
+        }
+
+        S_ptr(S_ptr&& other) noexcept : SmartPointer<T>{ other.get() }, _ref_count{ other._ref_count }
+        {
+            if (other.get() != nullptr)
+            {
+                *_ref_count += 1;
+            }
+        }
+
+        virtual ~S_ptr(void)
+        {
+            decrease_ref_count();
+        }
+
+        uint16_t count(void) const
+        {
+            return *_ref_count;
+        }
+
+        S_ptr<T>& operator =(const S_ptr<T>& other)
+        {
+            decrease_ref_count();
+            SmartPointer<T>::set_data(other.get());
+            _ref_count = other._ref_count;
+            *_ref_count += 1;
+            return *this;
+        }
+
+        S_ptr<T>& operator =(S_ptr<T>&& other) noexcept
+        {
+            decrease_ref_count();
+            SmartPointer<T>::set_data(other.get());
+            _ref_count = other._ref_count;
+            *_ref_count += 1;
+            return *this;
+        }
+
+    private:
+        uint16_t* _ref_count{ new uint16_t{ 0 }};
+
+        void decrease_ref_count(void)
+        {
+            if (SmartPointer<T>::get() == nullptr)
+            {
+                return;
+            }
+
+            *_ref_count -= 1;
+            if (*_ref_count == 0)
+            {
+                delete _ref_count;
+                auto tmp = SmartPointer<T>::get();
+                SmartPointer<T>::set_data(nullptr);
+                delete tmp;
+            }
+        }
+    };
+
+    /**
+     * @return a S_ptr pointing to a default instance of T.
+     */
+    template<typename T>
+    S_ptr<T> make_shared(void)
+    {
+        return { new T{ } };
+    }
+
+    /**
+     * Creates a S_ptr pointing to an instance of T created with
+     * provided parameters.
+     * @param args must match any parameterized constructor of T.
+     * @return a S_ptr instance pointing to the newly created instance of T.
+     */
+    template<typename T, class... Args>
+    S_ptr<T> make_shared(Args&&... args)
+    {
+        return { new T{ args... } };
+    }
+}

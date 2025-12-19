@@ -52,19 +52,19 @@ namespace Memory
             // Empty body.
         }
 
-        U_ptr(const U_ptr<T>& other) : SmartPointer<T>{ other.get_data() }
+        U_ptr(const U_ptr<T>& other) : SmartPointer<T>{ other.get() }
         {
             ((U_ptr<T>&) other).set_data(nullptr);
         }
 
-        U_ptr(U_ptr<T>&& other) : SmartPointer<T>{ other.get_data() }
+        U_ptr(U_ptr<T>&& other) noexcept : SmartPointer<T>{ other.get() }
         {
             other.set_data(nullptr);
         }
 
         virtual ~U_ptr(void)
         {
-            delete SmartPointer<T>::get_data();
+            delete SmartPointer<T>::get();
         }
 
         U_ptr<T>& operator =(T* data_ptr)

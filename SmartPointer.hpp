@@ -42,7 +42,7 @@ namespace Memory
         /**
          * @return _data member as a non mutable pointer.
          */
-        const T* get(void) const
+        T* get(void) const
         {
             return _data;
         }
@@ -65,9 +65,19 @@ namespace Memory
             return sp.get() == p;
         }
 
-        friend bool operator !=(T* p, const SmartPointer<T>& sp)
+        friend bool operator ==(const T* p, const SmartPointer<T>& sp)
+        {
+            return sp == p;
+        }
+
+        friend bool operator !=(const SmartPointer<T>& sp, const T* p)
         {
             return sp.get() != p;
+        }
+
+        friend bool operator !=(T* p, const SmartPointer<T>& sp)
+        {
+            return sp != p;
         }
 
     protected:
@@ -85,12 +95,6 @@ namespace Memory
         {
             // Empty body
         }
-
-        /**
-         * @return the pointer to _data member for internal treatment by
-         *         derived classes.
-         */
-        T* get_data() const { return _data; }
 
         /**
          * Changes the value of the _data member.

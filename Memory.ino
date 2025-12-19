@@ -53,13 +53,17 @@ struct TestObject
 };
 
 Memory::U_ptr<TestObject> u_test{ };
+Memory::S_ptr<TestObject> s_test{ };
+
+// #define _TEST_U_PTR
+#define _TEST_S_PTR
 
 void setup() {
   // put your setup code here, to run once:
-
-  #ifdef _TEST_U_PTR
   Serial.begin(9600);
   delay(2000);
+
+  #ifdef _TEST_U_PTR
   Memory::U_ptr<TestObject> machin = Memory::make_unique<TestObject>();
   Memory::U_ptr<TestObject> bob = Memory::make_unique<TestObject>("Bob");
   u_test = Memory::make_unique<TestObject>();
@@ -74,6 +78,27 @@ void setup() {
   }
 
   bob = machin;
+  #endif
+
+  #ifdef _TEST_S_PTR
+  s_test = Memory::make_shared<TestObject>("Michael");
+  Memory::S_ptr<TestObject> machin = Memory::make_shared<TestObject>();
+  auto bob = Memory::make_shared<TestObject>("Bob");
+
+  if (true)
+  {
+    Memory::S_ptr<TestObject> copies[5];
+    for (auto i = 0; i < 5; i++)
+    {
+      copies[i] = s_test;
+      Serial.println(s_test.count());
+    }
+  }
+
+  Serial.println(s_test.count());
+  s_test = nullptr;
+  Serial.println(s_test == nullptr);
+  Serial.println(s_test != nullptr);
   #endif
 }
 
