@@ -48,7 +48,7 @@ namespace Memory
         }
 
         T& operator *(void) { return *_data; }
-        T* operator ->(void) { return _data; }
+        T* operator ->(void) const { return _data; }
 
         friend bool operator ==(const SmartPointer<T>& a, const SmartPointer<T>& b)
         {
