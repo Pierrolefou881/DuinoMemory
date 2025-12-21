@@ -52,7 +52,7 @@ namespace Memory
         {
             if (data != nullptr)
             {
-                *_ref_count += 1;
+                (*_ref_count)++;
             }
         }
 
@@ -60,7 +60,7 @@ namespace Memory
         {
             if (other.get() != nullptr)
             {
-                *_ref_count += 1;
+                (*_ref_count)++;
             }
         }
 
@@ -68,7 +68,7 @@ namespace Memory
         {
             if (other.get() != nullptr)
             {
-                *_ref_count += 1;
+                (*_ref_count)++;
             }
         }
 
@@ -77,26 +77,56 @@ namespace Memory
             decrease_ref_count();
         }
 
+        /**
+         * @return the number of active references to this S_ptr.
+         */
         uint16_t count(void) const
         {
             return *_ref_count;
         }
 
+        S_ptr<T>& operator =(T* data_ptr)
+        {
+            if (data_ptr != *this)
+            {
+                decrease_ref_count();
+                SmartPointer<T>::set_data(data_ptr);
+                _ref_count = new uint16_t{ };
+                if (data_ptr != nullptr)
+                {
+                    *_ref_count += 1;
+                }
+            }
+            return *this;
+        }
+
         S_ptr<T>& operator =(const S_ptr<T>& other)
         {
-            decrease_ref_count();
-            SmartPointer<T>::set_data(other.get());
-            _ref_count = other._ref_count;
-            *_ref_count += 1;
+            if (other != *this)
+            {
+                decrease_ref_count();
+                SmartPointer<T>::set_data(other.get());
+                _ref_count = other._ref_count;
+                if (other != nullptr)
+                {
+                    *_ref_count += 1;
+                }
+            }
             return *this;
         }
 
         S_ptr<T>& operator =(S_ptr<T>&& other) noexcept
         {
-            decrease_ref_count();
-            SmartPointer<T>::set_data(other.get());
-            _ref_count = other._ref_count;
-            *_ref_count += 1;
+            if (other != *this)
+            {
+                decrease_ref_count();
+                SmartPointer<T>::set_data(other.get());
+                _ref_count = other._ref_count;
+                if (other != nullptr)
+                {
+                    *_ref_count += 1;
+                }
+            }
             return *this;
         }
 
@@ -105,7 +135,7 @@ namespace Memory
 
         void decrease_ref_count(void)
         {
-            if (SmartPointer<T>::get() == nullptr)
+            if (*this == nullptr)
             {
                 return;
             }
