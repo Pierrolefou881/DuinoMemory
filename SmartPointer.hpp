@@ -70,6 +70,16 @@ namespace Memory
             return sp == p;
         }
 
+        friend bool operator ==(const SmartPointer<T>& sp, const T& other)
+        {
+            return *sp == other;
+        }
+
+        friend bool operator ==(const T& other, const SmartPointer<T>& sp)
+        {
+            return *sp == other;
+        }
+
         friend bool operator !=(const SmartPointer<T>& sp, const T* p)
         {
             return sp.get() != p;
