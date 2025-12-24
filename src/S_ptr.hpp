@@ -171,4 +171,32 @@ namespace Memory
     {
         return { new T{ args... } };
     }
+
+    /**
+     * Creates a new instance of S_ptr<t> holding a default initialized
+     * instance of U.
+     * @param T can be any type.
+     * @param U is a derived type of T.
+     * @return a new S_ptr<T> wrapping the newly instanced U.
+     */
+    template<typename T, typename U>
+    S_ptr<T> make_shared(void)
+    {
+        return { new U{ } };
+    }
+
+    /**
+     * Creates a new instance of S_ptr<t> holding a instance of U initialized
+     * with given parameters.
+     * @param T can be any type.
+     * @param U is a derived type of T.
+     * @param Args types of arguments.
+     * @param args must match one of U's parameterized constructors.
+     * @return a new S_ptr<T> wrapping the newly instanced U.
+     */
+    template<typename T, typename U, class... Args>
+    S_ptr<T> make_shared(Args&&... args)
+    {
+        return { new U{ args... } };
+    }
 }

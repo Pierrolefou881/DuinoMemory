@@ -34,14 +34,5 @@ smart pointer and a reference to an instance of the wrapped type. Accepts compar
 
 ## **make_shared** and **make_unique**
 Automates the instancing of smart pointers using either default or parametrized constructors.
-
-## Limitations
-**SmarPointer** instances are polymorphic with derived types of the wrapped type, but not
-with each other. For instance, one cannot declare a smart pointer using the
-**SmartPointer** type (which is not allowed because its default constructor is protected,
-making the type behave like an abstract class) and assign a derived **S_ptr**
-or **U_ptr** as its value.
-
-For this reason, it is advised not to use **make_shared** or **make_unique** if the
-declared type is a base type of what is being instanced. This is the reason why the use of
-operator **new** may be required in some cases. 
+Both functions allow also the creation of derived types of the base type pointed to. Therefore,
+smart pointers allow polymorphic behaviors.

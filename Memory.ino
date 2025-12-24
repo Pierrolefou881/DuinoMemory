@@ -51,8 +51,28 @@ struct TestObject
   const char* _name = "";
 };
 
+struct DerivedTestObject : public TestObject
+{
+  DerivedTestObject(void) : TestObject{ } 
+  {
+    Serial.println("DERIVED");
+  }
+  DerivedTestObject(const char* name) : TestObject{ name }
+  {
+    Serial.print("DERIVED");
+    Serial.println(name);
+  }
+  virtual ~DerivedTestObject(void) = default;
+};
+
 Memory::U_ptr<TestObject> u_test{ };
 Memory::S_ptr<TestObject> s_test{ };
+
+// Test make_unique and make_shared with derived types.
+Memory::U_ptr<TestObject> u_derived{ };
+Memory::U_ptr<TestObject> u_derived_param{ };
+Memory::S_ptr<TestObject> s_derived{ };
+Memory::S_ptr<TestObject> s_derived_param{ };
 
 // #define _TEST_U_PTR
 #define _TEST_S_PTR
@@ -77,6 +97,9 @@ void setup() {
   }
 
   bob = machin;
+
+  u_derived = Memory::make_unique<TestObject, DerivedTestObject>();
+  u_derived_param = Memory::make_unique<TestObject, DerivedTestObject>("Chad");
   #endif
 
   #ifdef _TEST_S_PTR
@@ -98,6 +121,9 @@ void setup() {
   s_test = nullptr;
   Serial.println(s_test == nullptr);
   Serial.println(s_test != nullptr);
+
+  s_derived = Memory::make_shared<TestObject, DerivedTestObject>();
+  s_derived_param = Memory::make_shared<TestObject, DerivedTestObject>("Zack");
   #endif
 }
 

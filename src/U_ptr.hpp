@@ -69,7 +69,7 @@ namespace Memory
 
         U_ptr<T>& operator =(T* data_ptr)
         {
-            auto tmp = SmartPointer<T>::get_data();
+            auto tmp = SmartPointer<T>::get();
             SmartPointer<T>::set_data(data_ptr);
             delete tmp;
             return *this;
@@ -91,14 +91,16 @@ namespace Memory
         static void change_owner(const U_ptr<T>& source, const U_ptr<T>& destination)
         {   
             // Discard const qualifiers
-            auto del = ((U_ptr<T>&) destination).get_data();
-            ((U_ptr<T>&) destination).set_data(((U_ptr<T>&) source).get_data());
+            auto del = ((U_ptr<T>&) destination).get();
+            ((U_ptr<T>&) destination).set_data(((U_ptr<T>&) source).get());
             ((U_ptr<T>) source).set_data(nullptr);
             delete del;
         }
     };
 
     /**
+     * Create a new instance of U_ptr<T> holding a default T.
+     * @param T can be any type.
      * @return a new instance of U_ptr<T> holding a default initialized
      *         instance of T.
      */
@@ -111,6 +113,8 @@ namespace Memory
     /**
      * Creates a new instance of U_ptr<T> using the template type's
      * parametrized constructor.
+     * @param T can be any type.
+     * @param Args types of arguments.
      * @param args must match one of T's parametrized constructors.
      * @return a new instance of U_ptr<T> wrapping the instanced object.
      */
@@ -118,5 +122,33 @@ namespace Memory
     U_ptr<T> make_unique(Args&&... args)
     {
         return { new T{ args... } };
+    }
+
+    /**
+     * Creates a new instance of U_ptr<t> holding a default initialized
+     * instance of U.
+     * @param T can be any type.
+     * @param U is a derived type of T.
+     * @return a new U_ptr<T> wrapping the newly instanced U.
+     */
+    template<typename T, typename U>
+    U_ptr<T> make_unique(void)
+    {
+        return { new U{ } };
+    }
+
+    /**
+     * Creates a new instance of U_ptr<t> holding a instance of U initialized
+     * with given parameters.
+     * @param T can be any type.
+     * @param U is a derived type of T.
+     * @param Args types of arguments.
+     * @param args must match one of U's parameterized constructors.
+     * @return a new U_ptr<T> wrapping the newly instanced U.
+     */
+    template<typename T, typename U, class... Args>
+    U_ptr<T> make_unique(Args&&... args)
+    {
+        return { new U{ args... } };
     }
 }
