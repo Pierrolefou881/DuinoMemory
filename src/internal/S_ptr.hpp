@@ -2,11 +2,10 @@
  * ----------------------------------------------------------------------------
  * S_ptr
  * Custom implementation of shared pointer for Arduino.
- * Part of the ArduinoLibraries project, to be used with any Arduino board.
- * <https://github.com/Pierrolefou881/ArduinoLibraries>
+ * <https://github.com/Pierrolefou881/DuinoMemory>
  * ----------------------------------------------------------------------------
  *
- * Copyright (C) 2025  Pierre DEBAS
+ * Copyright (C) 2026  Pierre DEBAS
  * <dpierre394@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify

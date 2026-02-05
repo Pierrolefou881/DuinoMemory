@@ -1,12 +1,11 @@
 /*
  * ----------------------------------------------------------------------------
- * Memory
- * Testbed for smart pointers.
- * Part of the ArduinoLibraries project, to be used with any Arduino board.
- * <https://github.com/Pierrolefou881/ArduinoLibraries>
+ * DuinoMemory
+ * Testbed for lightweight Arduino smart pointers.
+ * <https://github.com/Pierrolefou881/DuinoMemory>
  * ----------------------------------------------------------------------------
  *
- * Copyright (C) 2025  Pierre DEBAS
+ * Copyright (C) 2026  Pierre DEBAS
  * <dpierre394@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,7 +21,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "Memory.hpp"
+#include <DuinoMemory.hpp>
 
 struct TestObject
 {

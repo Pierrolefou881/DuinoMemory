@@ -1,0 +1,21 @@
+{
+  "name": "DuinoMemory",
+  "version": "0.1.0",
+  "description": "Lightweight smart pointers for the Arduino environment",
+  "keywords": [
+    "arduino",
+    "memory",
+    "smart-pointer",
+    "smart-pointers",
+    "embedded",
+    "resource-management"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Pierrolefou881/DuinoMemory.git"
+  },
+  "license": "MIT",
+  "frameworks": ["arduino"],
+  "platforms": "*",
+  "headers": ["Memory.hpp"]
+}
