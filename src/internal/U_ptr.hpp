@@ -1,37 +1,35 @@
 /*
- * ----------------------------------------------------------------------------
- * U_ptr
- * Custom implementation of unique pointer for Arduino.
- * <https://github.com/Pierrolefou881/DuinoMemory>
- * ----------------------------------------------------------------------------
+ ******************************************************************************
+ *  U_ptr.hpp
  *
- * Copyright (C) 2026  Pierre DEBAS
- * <dpierre394@gmail.com>
+ *  Simple and lightweight unique pointer for Arduino.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  Author: Pierre DEBAS
+ *  Copyright (c) 2026
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  MIT License
+ *  https://github.com/Pierrolefou881/DuinoMemory
+ *
+ *  SPDX-License-Identifier: MIT
+ *
+ *  Description:
+ *    Like std::unique_ptr, U_ptr changes ownership on new assignment.
+ *    The object pointed to is destroyed whenever the U_ptr goes out of
+ *    scope. U_ptr does not allow copying.
+ *
+ ******************************************************************************
  */
 #pragma once
 #include "SmartPointer.hpp"
 
-namespace Memory
+namespace DuinoMemory
 {
     /**
      * Pointer wrapper that automatically deallocates memory
-     * when destroyed. Copy means change of ownership of
-     * the _data member, i.e. the copied member becomes
-     * nullptr while the copy holds exclusively the data.
-     * @param T can be of any type.
+     * when destroyed. U_ptr does not allow copying; ownership is transferred
+     * on each assignment.
+     * @param T can be of any type. When using U_ptr<Base> with derived objects, 
+     *          Base must have a virtual destructor.
      */
     template<typename T>
     class U_ptr : public SmartPointer<T>
@@ -46,22 +44,20 @@ namespace Memory
          * Initializes this U_ptr with the provided data pointer.
          * @param data can be nullptr.
          */
-        U_ptr(T* data) : SmartPointer<T>{ data }
+        explicit U_ptr(T* data) : SmartPointer<T>{ data }
         {
             // Empty body.
         }
 
-        U_ptr(const U_ptr<T>& other) : SmartPointer<T>{ other.get() }
-        {
-            ((U_ptr<T>&) other).set_data(nullptr);
-        }
+        U_ptr(const U_ptr<T>& other) = delete;
 
         U_ptr(U_ptr<T>&& other) noexcept : SmartPointer<T>{ other.get() }
         {
             other.set_data(nullptr);
         }
 
-        virtual ~U_ptr(void)
+        // Automatically destroys data when out of scope.
+        ~U_ptr(void)
         {
             delete SmartPointer<T>::get();
         }
@@ -69,31 +65,37 @@ namespace Memory
         U_ptr<T>& operator =(T* data_ptr)
         {
             auto tmp = SmartPointer<T>::get();
-            SmartPointer<T>::set_data(data_ptr);
-            delete tmp;
+            // Avoid self assignment.
+            if (data_ptr != tmp)
+            {
+                SmartPointer<T>::set_data(data_ptr);
+                delete tmp;
+            }
+
             return *this;
         }
 
-        U_ptr<T>& operator =(const U_ptr<T>& other)
-        {
-            change_owner(other, *this);
-            return *this;
-        }
+        U_ptr<T>& operator =(const U_ptr<T>& other) = delete;
 
         U_ptr<T>& operator =(U_ptr<T>&& other) noexcept
         {
-            change_owner(other, *this);
+            // Avoid self assignment.
+            if (this == &other)
+            {
+                return *this;
+            }
+
+            delete SmartPointer<T>::get();
+            SmartPointer<T>::set_data(other.get());
+            other.set_data(nullptr);
             return *this;
         }
 
-    private:
-        static void change_owner(const U_ptr<T>& source, const U_ptr<T>& destination)
-        {   
-            // Discard const qualifiers
-            auto del = ((U_ptr<T>&) destination).get();
-            ((U_ptr<T>&) destination).set_data(((U_ptr<T>&) source).get());
-            ((U_ptr<T>) source).set_data(nullptr);
-            delete del;
+        T* release(void)
+        {
+            auto ptr = SmartPointer<T>::get();
+            SmartPointer<T>::set_data(nullptr);
+            return ptr;
         }
     };
 
@@ -106,7 +108,7 @@ namespace Memory
     template<typename T>
     U_ptr<T> make_unique(void)
     {
-        return { new T{ } };
+        return U_ptr<T>{ new T{ } };
     }
 
     /**
@@ -120,7 +122,7 @@ namespace Memory
     template<typename T, class... Args>
     U_ptr<T> make_unique(Args&&... args)
     {
-        return { new T{ args... } };
+        return U_ptr<T>{ new T(args...) };
     }
 
     /**
@@ -133,7 +135,7 @@ namespace Memory
     template<typename T, typename U>
     U_ptr<T> make_unique(void)
     {
-        return { new U{ } };
+        return U_ptr<T>{ new U{ } };
     }
 
     /**
@@ -148,6 +150,6 @@ namespace Memory
     template<typename T, typename U, class... Args>
     U_ptr<T> make_unique(Args&&... args)
     {
-        return { new U{ args... } };
+        return U_ptr<T>{ new U(args...) };
     }
 }

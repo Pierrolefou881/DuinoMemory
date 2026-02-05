@@ -34,14 +34,15 @@ The DuinoMemory library revolves around two concrete smart pointer types:
 - **U_ptr**, similar to the C++ STL **std::unique_ptr**. This
 pointer does not allow copying and changes ownership every time
 a new assignment is made. It also destroys the object when it 
-goes out
-of scope.
+goes out of scope. CAUTION: When using U_ptr<T> with polymorphic 
+types, T must have a virtual destructor to ensure correct 
+destruction of derived objects.
 - **S_ptr**, similar to the C++ STL **std::shared_ptr**. This
 pointer counts the number of references to the object. When this
 count drops to zero, the object gets destroyed.
 
 For ease of use the library only requires including the
-**Memory.hpp** header.
+**DuinoMemory.hpp** header.
 
 ## Examples
 
@@ -49,11 +50,11 @@ For ease of use the library only requires including the
 
 ``` C++
 // example.ino
-#include <Memory.hpp>         // Import library.
+#include <DuinoMemory.hpp>         // Import library.
 
-Memory::U_ptr<Foo> _foo{ };   // Declare and initialize a null (nullptr) U_ptr.
+DuinoMemory::U_ptr<Foo> _foo{ };   // Declare and initialize a null (nullptr) U_ptr.
 
-Memory::S_ptr<Bar> _bar{ };   // Declare and initialize a null (nullptr) S_ptr.
+DuinoMemory::S_ptr<Bar> _bar{ };   // Declare and initialize a null (nullptr) S_ptr.
 ```
 
 ### Allocate new resources
@@ -62,11 +63,11 @@ Memory::S_ptr<Bar> _bar{ };   // Declare and initialize a null (nullptr) S_ptr.
 void some_func(Foo* some_ptr) {
     // _foo = new Foo{ };                    // Using new operator is not recommended (code smell).
 
-    _foo = some_ptr;                          // // Ownership is transferred; the pointed object will be destroyed when exiting the function.
+    _foo = some_ptr;                         // Ownership is transferred; the pointed object will be destroyed when exiting the function.
 
-    _foo = Memory::make_unique<Foo>();       // Use allocation function (recommended).
+    _foo = DuinoMemory::make_unique<Foo>();       // Use allocation function (recommended).
 
-    _bar = Memory::make_shared<Bar>(param);  // Also exists with parameters. The number and types of arguments must match an existing constructor of the template type.
+    _bar = DuinoMemory::make_shared<Bar>(param);  // Also exists with parameters. The number and types of arguments must match an existing constructor of the template type.
 
     _bar = some_ptr;                         // Very common use case.
 }
@@ -75,15 +76,18 @@ void some_func(Foo* some_ptr) {
 ### Assignment
 
 ```C++
-Memory::U_ptr<Foo> _foo_2 = _foo;            // _foo is now null (change of ownership).
+// DuinoMemory::U_ptr<Foo> _foo_1{ };
+// _foo_1 = _foo                                            // ERROR ! Copy assignment deleted.
 
-Memory::S_ptr<Bar> _bar2 = _bar;             // _bar and _bar2 point to the same object (reference count incremented).
+DuinoMemory::U_ptr<Foo> _foo_2 = _foo.release();            // _foo is now null (change of ownership).
+
+DuinoMemory::S_ptr<Bar> _bar2 = _bar;             // _bar and _bar2 point to the same object (reference count incremented).
 ```
 
 ### Deallocation
 ```C++
 void some_other_func() {
-    Memory::U_ptr<Foo> _tmp = _foo;          // Object will be destroyed when exiting the function.
+    DuinoMemory::U_ptr<Foo> _tmp = _foo.release();          // Object will be destroyed when exiting the function.
 
     _bar2 = nullptr;                         // Decrements the reference count. If it reaches 0, object gets destroyed.
 }
@@ -94,6 +98,14 @@ void some_other_func() {
 **U_ptr** and **S_ptr** function like their STL counterparts.
 
 ```C++
+/**
+ * Warning:
+ *   Dereferencing a null SmartPointer (* or ->) leads to 
+ *   undefined behavior.
+ *   Always check that the pointer is valid before dereferencing:
+ *       if (ptr) { ptr->method(); }
+ */
+
 // Dereference operator *
 Foo copy = *_foo;
 
@@ -102,6 +114,19 @@ _bar->method();
 
 // Get the raw pointer.
 Bar* ptr = _bar.get();
+```
+
+### Operator bool
+```C++
+if (_foo)                                                  // Same as if (_foo != nullptr)
+{
+    do_something();
+}
+
+if (!_foo)                                                  // Same as if (_foo == nullptr)
+{
+
+}
 ```
 
 ## License

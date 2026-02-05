@@ -1,25 +1,22 @@
 /*
- * ----------------------------------------------------------------------------
- * DuinoMemory
- * Testbed for lightweight Arduino smart pointers.
- * <https://github.com/Pierrolefou881/DuinoMemory>
- * ----------------------------------------------------------------------------
+ ******************************************************************************
+ *  Basic.ino
  *
- * Copyright (C) 2026  Pierre DEBAS
- * <dpierre394@gmail.com>
+ *  Testbed for DuinoMemory smart pointers.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  Author: Pierre DEBAS
+ *  Copyright (c) 2026
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  MIT License
+ *  https://github.com/Pierrolefou881/DuinoMemory
+ *
+ *  SPDX-License-Identifier: MIT
+ *
+ *  Description:
+ *    Example and test sketch for the DuinoMemory library smart pointers
+ *    U_ptr and S_ptr.
+ *
+ ******************************************************************************
  */
 #include <DuinoMemory.hpp>
 
@@ -58,23 +55,24 @@ struct DerivedTestObject : public TestObject
   }
   DerivedTestObject(const char* name) : TestObject{ name }
   {
-    Serial.print("DERIVED");
+    Serial.print("DERIVED\t");
     Serial.println(name);
   }
   virtual ~DerivedTestObject(void) = default;
 };
 
-Memory::U_ptr<TestObject> u_test{ };
-Memory::S_ptr<TestObject> s_test{ };
+// CAUTION: Do not instantiate TestObject yet; do it after Serial.begin().
+DuinoMemory::U_ptr<TestObject> u_test{ };
+// DuinoMemory::S_ptr<TestObject> s_test{ };
 
 // Test make_unique and make_shared with derived types.
-Memory::U_ptr<TestObject> u_derived{ };
-Memory::U_ptr<TestObject> u_derived_param{ };
-Memory::S_ptr<TestObject> s_derived{ };
-Memory::S_ptr<TestObject> s_derived_param{ };
+DuinoMemory::U_ptr<TestObject> u_derived{ };
+DuinoMemory::U_ptr<TestObject> u_derived_param{ };
+// DuinoMemory::S_ptr<TestObject> s_derived{ };
+// DuinoMemory::S_ptr<TestObject> s_derived_param{ };
 
-// #define _TEST_U_PTR
-#define _TEST_S_PTR
+#define _TEST_U_PTR
+// #define _TEST_S_PTR
 
 void setup() {
   // put your setup code here, to run once:
@@ -82,33 +80,34 @@ void setup() {
   delay(2000);
 
   #ifdef _TEST_U_PTR
-  Memory::U_ptr<TestObject> machin = Memory::make_unique<TestObject>();
-  Memory::U_ptr<TestObject> bob = Memory::make_unique<TestObject>("Bob");
-  u_test = Memory::make_unique<TestObject>();
+  DuinoMemory::U_ptr<TestObject> machin = DuinoMemory::make_unique<TestObject>();
+  DuinoMemory::U_ptr<TestObject> bob = DuinoMemory::make_unique<TestObject>("Bob");
+  u_test = DuinoMemory::make_unique<TestObject>();
 
   for (int i = 0; i < 5; i++)
   {
-    Serial.println(u_test == nullptr);
+    Serial.println(!u_test);
     if (i > 2)
     {
       u_test = nullptr;
     }
   }
 
-  bob = machin;
+  bob = machin.release();
 
-  u_derived = Memory::make_unique<TestObject, DerivedTestObject>();
-  u_derived_param = Memory::make_unique<TestObject, DerivedTestObject>("Chad");
+  u_derived = DuinoMemory::make_unique<TestObject, DerivedTestObject>();
+  u_derived_param = DuinoMemory::make_unique<TestObject, DerivedTestObject>("Chad");
   #endif
 
   #ifdef _TEST_S_PTR
-  s_test = Memory::make_shared<TestObject>("Michael");
-  Memory::S_ptr<TestObject> machin = Memory::make_shared<TestObject>();
-  auto bob = Memory::make_shared<TestObject>("Bob");
+  s_test = DuinoMemory::make_shared<TestObject>("Michael");
+  DuinoMemory::S_ptr<TestObject> machin = DuinoMemory::make_shared<TestObject>();
+  auto bob = DuinoMemory::make_shared<TestObject>("Bob");
 
+  // We need a block to test deallocation when going out of scope.
   if (true)
   {
-    Memory::S_ptr<TestObject> copies[5];
+    DuinoMemory::S_ptr<TestObject> copies[5];
     for (auto i = 0; i < 5; i++)
     {
       copies[i] = s_test;
@@ -121,8 +120,8 @@ void setup() {
   Serial.println(s_test == nullptr);
   Serial.println(s_test != nullptr);
 
-  s_derived = Memory::make_shared<TestObject, DerivedTestObject>();
-  s_derived_param = Memory::make_shared<TestObject, DerivedTestObject>("Zack");
+  s_derived = DuinoMemory::make_shared<TestObject, DerivedTestObject>();
+  s_derived_param = DuinoMemory::make_shared<TestObject, DerivedTestObject>("Zack");
   #endif
 }
 

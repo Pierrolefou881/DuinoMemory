@@ -1,29 +1,27 @@
 /*
- * ----------------------------------------------------------------------------
- * SmartPointer
- * Base behavior for custom smart pointers for Arduino.
- * <https://github.com/Pierrolefou881/DuinoMemory>
- * ----------------------------------------------------------------------------
+ ******************************************************************************
+ *  SmartPointer.hpp
  *
- * Copyright (C) 2026  Pierre DEBAS
- * <dpierre394@gmail.com>
+ *  Basic logic for DuinoMemory smart pointers.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  Author: Pierre DEBAS
+ *  Copyright (c) 2026
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  MIT License
+ *  https://github.com/Pierrolefou881/DuinoMemory
+ *
+ *  SPDX-License-Identifier: MIT
+ *
+ *  Description:
+ *    Simple and lightweight smart pointers for Arduino. SmartPointer
+ *    defines basic abstract behavior like dereferencing and raw
+ *    pointer access.
+ *
+ ******************************************************************************
  */
 #pragma once
 
-namespace Memory
+namespace DuinoMemory
 {
     /**
      * Base behavior for all smart pointers for Arduino. Smart pointers
@@ -36,6 +34,8 @@ namespace Memory
     {
     public:
         // Don't manage deallocation here, derived types shall do it.
+        // _data is not destroyed in base class. Concrete types must ensure
+        // proper memory deallocation according to their needs.
         virtual ~SmartPointer(void) = default;
 
         /**
@@ -46,8 +46,19 @@ namespace Memory
             return _data;
         }
 
+        /**
+         * Warning:
+         *   Dereferencing a null SmartPointer (* or ->) leads to undefined behavior.
+         *   Always check that the pointer is valid before dereferencing:
+         *       if (ptr) { ptr->method(); }
+         */
         T& operator *(void) const { return *_data; }
         T* operator ->(void) const { return _data; }
+
+        explicit operator bool(void) const
+        {
+            return _data != nullptr;
+        }
 
         friend bool operator ==(const SmartPointer<T>& a, const SmartPointer<T>& b)
         {
@@ -66,17 +77,17 @@ namespace Memory
 
         friend bool operator ==(const T* p, const SmartPointer<T>& sp)
         {
-            return sp == p;
+            return sp.get() == p;
         }
 
         friend bool operator ==(const SmartPointer<T>& sp, const T& other)
         {
-            return *sp == other;
+            return sp != nullptr && *sp == other;
         }
 
         friend bool operator ==(const T& other, const SmartPointer<T>& sp)
         {
-            return *sp == other;
+            return sp == other;
         }
 
         friend bool operator !=(const SmartPointer<T>& sp, const T* p)
@@ -87,6 +98,16 @@ namespace Memory
         friend bool operator !=(T* p, const SmartPointer<T>& sp)
         {
             return sp != p;
+        }
+
+        friend bool operator !=(const SmartPointer<T>& sp, const T& other)
+        {
+            return !(sp == other);
+        }
+
+        friend bool operator !=(const T& other, const SmartPointer<T>& sp)
+        {
+            return !(sp == other);
         }
 
     protected:
@@ -100,18 +121,21 @@ namespace Memory
          * pointer.
          * @param data can be nullptr.
          */
-        SmartPointer(T* data) : _data{ data }
+        explicit SmartPointer(T* data) : _data{ data }
         {
             // Empty body
         }
 
         /**
          * Changes the value of the _data member.
+         * CAUTION: Concrete types must manage deallocation of
+         *          _data before calling this method; potential
+         *          memory leak otherwise.
          * @param new_data to assign. Can be nullptr.
          */
         void set_data(T* new_data) { _data = new_data; }
 
     private:
-        mutable T* _data{ };
+        T* _data{ };
     };
 }
