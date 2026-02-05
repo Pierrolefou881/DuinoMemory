@@ -1,6 +1,6 @@
 {
   "name": "DuinoMemory",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Lightweight smart pointers for the Arduino environment",
   "keywords": [
     "arduino",
