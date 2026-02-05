@@ -106,6 +106,7 @@ void setup() {
   #endif
 
   #ifdef _TEST_S_PTR
+  Serial.println("==S_ptr TESTS==");
   s_test = DuinoMemory::make_shared<TestObject>("Michael");
   Serial.println(s_test.count()); // 1
 
