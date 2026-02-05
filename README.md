@@ -10,7 +10,8 @@ License: MIT.
 
 ### Arduino IDE
 
-Clone the following [git repo](https://github.com/Pierrolefou881/DuinoMemory.git) directly into your Arduino/libraries directory. 
+Clone the following [git repo](https://github.com/Pierrolefou881/DuinoMemory.git) 
+directly into your Arduino/libraries directory. 
 
 ### PlatformIO
 
@@ -52,24 +53,38 @@ For ease of use the library only requires including the
 // example.ino
 #include <DuinoMemory.hpp>         // Import library.
 
-DuinoMemory::U_ptr<Foo> _foo{ };   // Declare and initialize a null (nullptr) U_ptr.
+// Declare and initialize a null (nullptr) U_ptr.
+DuinoMemory::U_ptr<Foo> _foo{ };   
 
-DuinoMemory::S_ptr<Bar> _bar{ };   // Declare and initialize a null (nullptr) S_ptr.
+// Declare and initialize a null (nullptr) S_ptr.
+DuinoMemory::S_ptr<Bar> _bar{ };   
 ```
 
 ### Allocate new resources
 
 ```C++
 void some_func(Foo* some_ptr) {
-    // _foo = new Foo{ };                    // Using new operator is not recommended (code smell).
+    // Using new operator is not recommended (code smell).
+    // _foo = new Foo{ };                    
 
-    _foo = some_ptr;                         // Ownership is transferred; the pointed object will be destroyed when exiting the function.
+    // Ownership is transferred; the pointed object will be destroyed when 
+    // exiting the function.
+    _foo = some_ptr;                         
 
-    _foo = DuinoMemory::make_unique<Foo>();       // Use allocation function (recommended).
+    // Use allocation function (recommended).
+    _foo = DuinoMemory::make_unique<Foo>();       
 
-    _bar = DuinoMemory::make_shared<Bar>(param);  // Also exists with parameters. The number and types of arguments must match an existing constructor of the template type.
+    // Also exists with parameters. The number and types of arguments must match 
+    // an existing constructor of the template type.
+    _bar = DuinoMemory::make_shared<Bar>(param);  
 
-    _bar = some_ptr;                         // Very common use case.
+    // You can also make polymorphic instantiations with either S_ptr or U_ptr, 
+    // with or without parameters.
+    _bar = DuinoMemory::make_shared<Bar, BarDerived>(param); 
+
+    // Very common use case. Sets reference count at 1. CAUTION: do not do it 
+    // with another S_ptr's raw pointer.
+    _bar = some_ptr;                         
 }
 ```
 
@@ -77,19 +92,33 @@ void some_func(Foo* some_ptr) {
 
 ```C++
 // DuinoMemory::U_ptr<Foo> _foo_1{ };
-// _foo_1 = _foo                                            // ERROR ! Copy assignment deleted.
+// _foo_1 = _foo                      // ERROR ! Copy assignment deleted.
 
-DuinoMemory::U_ptr<Foo> _foo_2 = _foo.release();            // _foo is now null (change of ownership).
+// _foo is now null (change of ownership).
+DuinoMemory::U_ptr<Foo> _foo_2 = _foo.release();  
 
-DuinoMemory::S_ptr<Bar> _bar2 = _bar;             // _bar and _bar2 point to the same object (reference count incremented).
+// _bar and _bar2 point to the same object (reference count incremented).
+DuinoMemory::S_ptr<Bar> _bar2 = _bar;
+uint16_t count = _bar.count();  // 2          
+
+// CAUTION: Do not initialize or assign a S_ptr with the raw pointer from 
+// another S_ptr; undefined behavior.
+// DuinoMemory::S_ptr<Bar> _error{ _bar.get() };
+// _error = _bar.get();
+
+// This is the correct way.
+DuinoMemory::S_ptr<Bar> _correct{ _bar };
+_correct = _bar;
 ```
 
 ### Deallocation
 ```C++
-void some_other_func() {
-    DuinoMemory::U_ptr<Foo> _tmp = _foo.release();          // Object will be destroyed when exiting the function.
+void cleanup() {
+    // Object will be destroyed when exiting the function.
+    DuinoMemory::U_ptr<Foo> _tmp = _foo.release();          
 
-    _bar2 = nullptr;                         // Decrements the reference count. If it reaches 0, object gets destroyed.
+    // Decrements the reference count. If it reaches 0, object gets destroyed.
+    _bar2 = nullptr;
 }
 ```
 
@@ -114,19 +143,62 @@ _bar->method();
 
 // Get the raw pointer.
 Bar* ptr = _bar.get();
+
+// get reference count (S_ptr only).
+uint16_t ref_count = _bar.count();
 ```
 
 ### Operator bool
+
+The ***bool*** opeator checks whether the smart pointer's raw pointer is null.
 ```C++
-if (_foo)                                                  // Same as if (_foo != nullptr)
+if (_foo)               // Same as if (_foo != nullptr)
 {
     do_something();
 }
 
-if (!_foo)                                                  // Same as if (_foo == nullptr)
+if (!_foo)              // Same as if (_foo == nullptr)
 {
 
 }
+
+// Works also with S_ptr
+if (_bar)
+{
+
+}
+
+if (!_bar)
+{
+
+}
+```
+
+### Polymorphic example
+
+```C++
+struct Base {
+    virtual void say() { Serial.println("Base"); }
+    virtual ~Base() = default;
+};
+
+struct Derived : public Base {
+    void say() override { Serial.println("Derived"); }
+};
+
+// U_ptr with derived
+DuinoMemory::U_ptr<Base> up = DuinoMemory::make_unique<Base, Derived>();
+up->say();  // Prints "Derived"
+
+// S_ptr with derived
+DuinoMemory::S_ptr<Base> sp = DuinoMemory::make_shared<Base, Derived>();
+sp->say();  // Prints "Derived"
+
+// Reference counting
+DuinoMemory::S_ptr<Base> sp2 = sp;
+Serial.println(sp.count()); // 2
+sp = nullptr;
+Serial.println(sp2.count()); // 1
 ```
 
 ## License

@@ -32,7 +32,7 @@ namespace DuinoMemory
      *          Base must have a virtual destructor.
      */
     template<typename T>
-    class U_ptr : public SmartPointer<T>
+    class U_ptr final : public SmartPointer<T>
     {
     public:
         /**

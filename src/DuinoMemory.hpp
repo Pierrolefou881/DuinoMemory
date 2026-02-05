@@ -1,26 +1,24 @@
 /*
- * ----------------------------------------------------------------------------
- * DuinoMemory
- * Lightweight smart pointers for Arduino.
- * <https://github.com/Pierrolefou881/DuinoMemory>
- * ----------------------------------------------------------------------------
+ ******************************************************************************
+ *  DuinoMemory.hpp
  *
- * Copyright (C) 2026  Pierre DEBAS
- * <dpierre394@gmail.com>
+ *  Simple and lightweight smart pointers for the Arduino environment.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  Author: Pierre DEBAS
+ *  Copyright (c) 2026
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  MIT License
+ *  https://github.com/Pierrolefou881/DuinoMemory
+ *
+ *  SPDX-License-Identifier: MIT
+ *
+ *  Description:
+ *    Small memory allocation library that manages smart pointers to avoid
+ *    using new and delete operators. Smart pointers automatically manage
+ *    memory allocation and deallocation.
+ *
+ ******************************************************************************
  */
 #pragma once
 #include "internal/U_ptr.hpp"
-// #include "internal/S_ptr.hpp"
+#include "internal/S_ptr.hpp"

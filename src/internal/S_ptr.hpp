@@ -23,7 +23,7 @@
 #include "SmartPointer.hpp"
 #include <stdint.h>
 
-namespace Memory
+namespace DuinoMemory
 {
     /**
      * Pointer wrapper that automatically deallocates memory when
@@ -32,7 +32,7 @@ namespace Memory
      * @param T can be any type.
      */
     template<typename T>
-    class S_ptr : public SmartPointer<T>
+    class S_ptr final : public SmartPointer<T>
     {
     public:
         /**
@@ -45,11 +45,11 @@ namespace Memory
             * increases the reference count to 1.
             * @param data pointer. Can be nullptr.
             */
-        S_ptr(T* data) : SmartPointer<T>{ data }, _ref_count{ new uint16_t{ 0 } }
+        explicit S_ptr(T* data) : SmartPointer<T>{ data }
         {
             if (data != nullptr)
             {
-                (*_ref_count)++;
+                _ref_count = new uint16_t{ 1 };
             }
         }
 
@@ -61,17 +61,9 @@ namespace Memory
             }
         }
 
-        S_ptr(S_ptr&& other) noexcept : SmartPointer<T>{ other.get() }, _ref_count{ other._ref_count }
+        ~S_ptr(void)
         {
-            if (other.get() != nullptr)
-            {
-                (*_ref_count)++;
-            }
-        }
-
-        virtual ~S_ptr(void)
-        {
-            decrease_ref_count();
+            release();
         }
 
         /**
@@ -79,72 +71,64 @@ namespace Memory
          */
         uint16_t count(void) const
         {
-            return *_ref_count;
+            return _ref_count != nullptr ? *_ref_count : 0;
         }
 
+        /**
+         * CAUTION: Do not copy raw pointer from another S_ptr. Directly copy the S_ptr instead.
+         *          You can also use this operator with functions that return raw pointers, like factories.
+         * EXAMPLE: ptr = other.get();                  ==> DANGER ! Undefined behavior.
+         *          ptr = other;                        ==> SAFE, very common use case.
+         *          ptr = some_object->build_object();  ==> SAFE, common use case.
+         */
         S_ptr<T>& operator =(T* data_ptr)
         {
-            if (data_ptr != *this)
+            if (data_ptr != SmartPointer<T>::get())
             {
-                decrease_ref_count();
+                release();
                 SmartPointer<T>::set_data(data_ptr);
-                _ref_count = new uint16_t{ };
-                if (data_ptr != nullptr)
-                {
-                    *_ref_count += 1;
-                }
+                _ref_count = data_ptr != nullptr ? new uint16_t{ 1 } : nullptr;
             }
             return *this;
         }
 
         S_ptr<T>& operator =(const S_ptr<T>& other)
         {
-            if (other != *this)
+            if (this != &other)
             {
-                decrease_ref_count();
-                SmartPointer<T>::set_data(other.get());
+                release();
+                auto other_data = other.get();
+                SmartPointer<T>::set_data(other_data);
                 _ref_count = other._ref_count;
-                if (other != nullptr)
+                if (other_data != nullptr)
                 {
-                    *_ref_count += 1;
-                }
-            }
-            return *this;
-        }
-
-        S_ptr<T>& operator =(S_ptr<T>&& other) noexcept
-        {
-            if (other != *this)
-            {
-                decrease_ref_count();
-                SmartPointer<T>::set_data(other.get());
-                _ref_count = other._ref_count;
-                if (other != nullptr)
-                {
-                    *_ref_count += 1;
+                    (*_ref_count)++;
                 }
             }
             return *this;
         }
 
     private:
-        uint16_t* _ref_count{ new uint16_t{ 0 }};
+        uint16_t* _ref_count{ };
 
-        void decrease_ref_count(void)
+        void release(void)
         {
-            if (*this == nullptr)
+            auto data = SmartPointer<T>::get();
+            if (data == nullptr)
             {
                 return;
             }
 
-            *_ref_count -= 1;
+            (*_ref_count)--;
+
             if (*_ref_count == 0)
             {
+                delete data;
                 delete _ref_count;
-                auto tmp = SmartPointer<T>::get();
-                SmartPointer<T>::set_data(nullptr);
-                delete tmp;
             }
+
+            SmartPointer<T>::set_data(nullptr);
+            _ref_count = nullptr;
         }
     };
 
@@ -154,7 +138,7 @@ namespace Memory
     template<typename T>
     S_ptr<T> make_shared(void)
     {
-        return { new T{ } };
+        return S_ptr<T>{ new T{ } };
     }
 
     /**
@@ -166,7 +150,7 @@ namespace Memory
     template<typename T, class... Args>
     S_ptr<T> make_shared(Args&&... args)
     {
-        return { new T{ args... } };
+        return S_ptr<T>{ new T(args...) };
     }
 
     /**
@@ -179,7 +163,7 @@ namespace Memory
     template<typename T, typename U>
     S_ptr<T> make_shared(void)
     {
-        return { new U{ } };
+        return S_ptr<T>{ new U{ } };
     }
 
     /**
@@ -194,6 +178,6 @@ namespace Memory
     template<typename T, typename U, class... Args>
     S_ptr<T> make_shared(Args&&... args)
     {
-        return { new U{ args... } };
+        return S_ptr<T>{ new U(args...) };
     }
 }

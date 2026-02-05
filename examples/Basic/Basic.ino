@@ -63,16 +63,17 @@ struct DerivedTestObject : public TestObject
 
 // CAUTION: Do not instantiate TestObject yet; do it after Serial.begin().
 DuinoMemory::U_ptr<TestObject> u_test{ };
-// DuinoMemory::S_ptr<TestObject> s_test{ };
+DuinoMemory::S_ptr<TestObject> s_test{ };
 
 // Test make_unique and make_shared with derived types.
 DuinoMemory::U_ptr<TestObject> u_derived{ };
 DuinoMemory::U_ptr<TestObject> u_derived_param{ };
-// DuinoMemory::S_ptr<TestObject> s_derived{ };
-// DuinoMemory::S_ptr<TestObject> s_derived_param{ };
+DuinoMemory::S_ptr<TestObject> s_derived{ };
+DuinoMemory::S_ptr<TestObject> s_derived_param{ };
 
-#define _TEST_U_PTR
-// #define _TEST_S_PTR
+// Uncomment the macro for the type of pointer you want to test
+// #define _TEST_U_PTR
+#define _TEST_S_PTR
 
 void setup() {
   // put your setup code here, to run once:
@@ -80,9 +81,13 @@ void setup() {
   delay(2000);
 
   #ifdef _TEST_U_PTR
+  Serial.println("==U_ptr TESTS==");
   DuinoMemory::U_ptr<TestObject> machin = DuinoMemory::make_unique<TestObject>();
   DuinoMemory::U_ptr<TestObject> bob = DuinoMemory::make_unique<TestObject>("Bob");
   u_test = DuinoMemory::make_unique<TestObject>();
+
+  (*bob).do_something();
+  bob->do_something();
 
   for (int i = 0; i < 5; i++)
   {
@@ -93,6 +98,7 @@ void setup() {
     }
   }
 
+  // Change of ownership
   bob = machin.release();
 
   u_derived = DuinoMemory::make_unique<TestObject, DerivedTestObject>();
@@ -101,7 +107,29 @@ void setup() {
 
   #ifdef _TEST_S_PTR
   s_test = DuinoMemory::make_shared<TestObject>("Michael");
+  Serial.println(s_test.count()); // 1
+
+  s_test->do_something();
+  (*s_test).do_something();
+
+  s_test = s_test;
+  Serial.println(s_test.count()); // 1
+
   DuinoMemory::S_ptr<TestObject> machin = DuinoMemory::make_shared<TestObject>();
+  Serial.println(machin.count()); // 1
+  s_test = nullptr;
+  Serial.println(s_test.count()); // 0
+  s_test = machin;
+  Serial.println(s_test.count()); // 2
+  machin = nullptr;
+  Serial.println(s_test.count()); // 1
+  Serial.println(machin.count()); // 0
+  machin = DuinoMemory::make_shared<TestObject>("John");
+  Serial.println(machin.count());
+
+  // CAUTION: don't do this, as it may lead to undefined behavior
+  // DuinoMemory::S_ptr<TestObject> ub = s_test.get();
+
   auto bob = DuinoMemory::make_shared<TestObject>("Bob");
 
   // We need a block to test deallocation when going out of scope.
@@ -117,7 +145,7 @@ void setup() {
 
   Serial.println(s_test.count());
   s_test = nullptr;
-  Serial.println(s_test == nullptr);
+  Serial.println(!s_test);
   Serial.println(s_test != nullptr);
 
   s_derived = DuinoMemory::make_shared<TestObject, DerivedTestObject>();
