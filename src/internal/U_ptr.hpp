@@ -51,8 +51,9 @@ namespace DuinoMemory
 
         U_ptr(const U_ptr<T>& other) = delete;
 
-        U_ptr(U_ptr<T>&& other) noexcept : SmartPointer<T>{ other.get() }
+        U_ptr(U_ptr<T>&& other) noexcept : SmartPointer<T>{ nullptr }
         {
+            SmartPointer<T>::set_data(other.get());
             other.set_data(nullptr);
         }
 
@@ -62,14 +63,29 @@ namespace DuinoMemory
             delete SmartPointer<T>::get();
         }
 
+        /**
+         * Abandons ownership of the pointed object.
+         * @return the raw pointer to the object.
+         */
+        T* release(void)
+        {
+            auto ptr = SmartPointer<T>::get();
+            SmartPointer<T>::set_data(nullptr);
+            return ptr;
+        }
+
+        /**
+         * CAUTION: Assigning a raw pointer transfers ownership.
+         *          The pointer must not be owned elsewhere.
+         */
         U_ptr<T>& operator =(T* data_ptr)
         {
             auto tmp = SmartPointer<T>::get();
             // Avoid self assignment.
             if (data_ptr != tmp)
             {
-                SmartPointer<T>::set_data(data_ptr);
                 delete tmp;
+                SmartPointer<T>::set_data(data_ptr);
             }
 
             return *this;
@@ -89,13 +105,6 @@ namespace DuinoMemory
             SmartPointer<T>::set_data(other.get());
             other.set_data(nullptr);
             return *this;
-        }
-
-        T* release(void)
-        {
-            auto ptr = SmartPointer<T>::get();
-            SmartPointer<T>::set_data(nullptr);
-            return ptr;
         }
     };
 

@@ -1,21 +1,45 @@
 # DuinoMemory
 
-Lightweight smart pointers for the Arduino environment.
+<!-- Arduino dynamic badge (enable when available)
+[![Arduino Library Manager](https://img.shields.io/arduino-library/v/DuinoMemory.svg)](https://www.arduino.cc/reference/en/libraries/duinomemory/)
+-->
 
-Supports Arduino / PlatformIO.
+![Arduino](https://img.shields.io/badge/Arduino-Compatible-00979D) [![PlatformIO Registry](https://badges.registry.platformio.org/packages/pierrolefou881/library/DuinoMemory.svg)](https://registry.platformio.org/libraries/pierrolefou881/DuinoMemory) ![Header Only](https://img.shields.io/badge/header--only-yes-brightgreen) ![License](https://img.shields.io/github/license/Pierrolefou881/DuinoMemory) ![C++](https://img.shields.io/badge/C%2B%2B-11%2F14-blue) ![Embedded Friendly](https://img.shields.io/badge/embedded-friendly-blue)
+
+
+Lightweight, header-only smart pointers and memory utilities for Arduino and 
+embedded platforms.
+
+Compatible with Arduino IDE and PlatformIO.
 
 License: MIT.
+
+## Design goals
+
+- Provide simple, lightweight smart pointers for constrained embedded systems.
+- Avoid undefined behavior.
+- Stay close to `STL` semantics while remaining Arduino-friendly.
+
+## Non-goals
+
+- Full `STL` compliance.
+- Thread safety.
+- Custom allocators.
+
 
 ## Installation
 
 ### Arduino IDE
+Install directly from the IDE via the library manager.
+
+OR
 
 Clone the following [git repo](https://github.com/Pierrolefou881/DuinoMemory.git) 
 directly into your Arduino/libraries directory. 
 
 ### PlatformIO
 
-Add the library to your project's **platformio.ini** file:
+Add the library to your project's `platformio.ini` file:
 
 #### Stable
 ```ini
@@ -32,18 +56,20 @@ lib_deps =
 ## Structure
 
 The DuinoMemory library revolves around two concrete smart pointer types:
-- **U_ptr**, similar to the C++ STL **std::unique_ptr**. This
-pointer does not allow copying and changes ownership every time
-a new assignment is made. It also destroys the object when it 
+- `U_ptr`, similar to the C++ `STL` `std::unique_ptr`. This
+pointer does not allow copying. A new assignment means destruction of previously
+held data and change of ownership between two instances of `U_ptr` via the
+`release()` method. It also destroys the object when it 
 goes out of scope. CAUTION: When using U_ptr<T> with polymorphic 
 types, T must have a virtual destructor to ensure correct 
-destruction of derived objects.
-- **S_ptr**, similar to the C++ STL **std::shared_ptr**. This
+destruction of derived objects. `U_ptr` owns exactly one object at a time and 
+enforces single ownership.
+- `S_ptr`, similar to the C++ `STL` `std::shared_ptr`. This
 pointer counts the number of references to the object. When this
 count drops to zero, the object gets destroyed.
 
 For ease of use the library only requires including the
-**DuinoMemory.hpp** header.
+`DuinoMemory.hpp` header.
 
 ## Examples
 
@@ -64,8 +90,8 @@ DuinoMemory::S_ptr<Bar> _bar{ };
 
 ```C++
 void some_func(Foo* some_ptr) {
-    // Using new operator is not recommended (code smell).
-    // _foo = new Foo{ };                    
+    // Using new operator is not recommended.
+    _foo = new Foo{ };  // Code smell; defeats the purpose of a smart pointer
 
     // Ownership is transferred; the pointed object will be destroyed when 
     // exiting the function.
@@ -84,9 +110,60 @@ void some_func(Foo* some_ptr) {
 
     // Very common use case. Sets reference count at 1. CAUTION: do not do it 
     // with another S_ptr's raw pointer.
-    _bar = some_ptr;                         
+    _bar = some_ptr;
+    _bar = some_s_ptr.get() // DANGER: undefined behavior.                    
 }
 ```
+
+### Allocation failure
+
+Although unusual, it may occur that memory allocation fails when instantiating a 
+new `SmartPointer`. Unfortunately, such an event can lead to undefined behaviors, 
+due to the variety of Arduino compatible hardware. Symptoms for an allocation
+failure include crashes, hard resets of the MCU or infinite loops. Moreover, the 
+Arduino environment does not provide reliable failsafes for all platforms:
+- Exceptions are not supported on most MCUs.
+- Assert requires Exceptions.
+- `std::nothrow` tends to induce UBs.
+
+As a result allocation failures cannot be managed efficiently on Arduino. This
+is a limitation one has to be aware of when developing on embedded systems. Most
+often, allocation failures are caused by:
+- Intantiation of large objects.
+- Recursive allocations / deallocations.
+- Heap fragmentation.
+- Stack overflows.
+- Heap / Stack collisions.
+
+#### Troubleshooting allocation failures
+
+In the event of memory allocation failures, here are a few things you can try:
+- Avoid deep recursion.
+- Avoid dynamic allocation.
+- Manage object lifecycle.
+- Allocate once (at `setup()` for instance).
+- Favor static storage.
+- Monitor `RAM` usage.
+
+You can use the `bool` operator on `SmartPointer` to ensure you are accessing non
+null data.
+
+```C++
+// If allocation crashed, _fail == nullptr.
+// On some platforms however, failure might reset the MCU before reaching such test.
+DuinoMemory::U_ptr<Foo> _fail{ DuinoMemory::make_unique<Foo>(params) };
+
+// Check nullptr
+if (_fail)
+{
+    _fail->do_something();
+}
+// If nullptr, log error, crash or implement failsafe
+else
+{
+    Serial.println("ERROR -> Allocation failed");
+}
+``` 
 
 ### Assignment
 
@@ -99,12 +176,12 @@ DuinoMemory::U_ptr<Foo> _foo_2 = _foo.release();
 
 // _bar and _bar2 point to the same object (reference count incremented).
 DuinoMemory::S_ptr<Bar> _bar2 = _bar;
-uint16_t count = _bar.count();  // 2          
+size_t count = _bar.count();  // 2          
 
 // CAUTION: Do not initialize or assign a S_ptr with the raw pointer from 
 // another S_ptr; undefined behavior.
-// DuinoMemory::S_ptr<Bar> _error{ _bar.get() };
-// _error = _bar.get();
+DuinoMemory::S_ptr<Bar> _error{ _bar.get() };
+_error = _bar.get();
 
 // This is the correct way.
 DuinoMemory::S_ptr<Bar> _correct{ _bar };
@@ -124,7 +201,7 @@ void cleanup() {
 
 ### Data access
 
-**U_ptr** and **S_ptr** function like their STL counterparts.
+`U_ptr` and `S_ptr` function like their `STL` counterparts.
 
 ```C++
 /**
@@ -134,23 +211,29 @@ void cleanup() {
  *   Always check that the pointer is valid before dereferencing:
  *       if (ptr) { ptr->method(); }
  */
+if (_foo)
+{
+    // Dereference operator *
+    Foo copy = *_foo;
+}
 
-// Dereference operator *
-Foo copy = *_foo;
+if (_bar)
+{
+    // Dereference operator ->
+    _bar->method();
+}
 
-// Dereference operator ->
-_bar->method();
-
-// Get the raw pointer.
+// Get the raw pointer (can be nullptr).
 Bar* ptr = _bar.get();
 
-// get reference count (S_ptr only).
-uint16_t ref_count = _bar.count();
+// get reference count (S_ptr only). If either raw pointer or reference count is 
+// nullptr, returns 0.
+size_t ref_count = _bar.count();
 ```
 
 ### Operator bool
 
-The ***bool*** opeator checks whether the smart pointer's raw pointer is null.
+The `bool` operator checks whether the smart pointer's raw pointer is null.
 ```C++
 if (_foo)               // Same as if (_foo != nullptr)
 {
@@ -159,18 +242,18 @@ if (_foo)               // Same as if (_foo != nullptr)
 
 if (!_foo)              // Same as if (_foo == nullptr)
 {
-
+    crash(ErrorCode::NULLPTR);
 }
 
 // Works also with S_ptr
 if (_bar)
 {
-
+    _bar->do_something();
 }
 
 if (!_bar)
 {
-
+    log("ERROR -> nullptr detected");
 }
 ```
 
@@ -203,24 +286,4 @@ Serial.println(sp2.count()); // 1
 
 ## License
 
-MIT License
-
-Copyright (c) 2026 Pierre DEBAS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+MIT - see [LICENSE](LICENSE)

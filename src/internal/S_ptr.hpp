@@ -21,7 +21,7 @@
  */
 #pragma once
 #include "SmartPointer.hpp"
-#include <stdint.h>
+#include <stddef.h>
 
 namespace DuinoMemory
 {
@@ -36,20 +36,20 @@ namespace DuinoMemory
     {
     public:
         /**
-            * Initializes this S_ptr as nullptr.
-            */
+         * Initializes this S_ptr as nullptr.
+         */
         S_ptr(void) = default;
 
         /**
-            * Initializes this S_ptr with the provided pointer to data. If data not null,
-            * increases the reference count to 1.
-            * @param data pointer. Can be nullptr.
-            */
+         * Initializes this S_ptr with the provided pointer to data. If data not null,
+         * increases the reference count to 1.
+         * @param data pointer. Can be nullptr.
+         */
         explicit S_ptr(T* data) : SmartPointer<T>{ data }
         {
             if (data != nullptr)
             {
-                _ref_count = new uint16_t{ 1 };
+                _ref_count = new size_t{ 1 };
             }
         }
 
@@ -69,7 +69,7 @@ namespace DuinoMemory
         /**
          * @return the number of active references to this S_ptr.
          */
-        uint16_t count(void) const
+        size_t count(void) const noexcept
         {
             return _ref_count != nullptr ? *_ref_count : 0;
         }
@@ -87,7 +87,7 @@ namespace DuinoMemory
             {
                 release();
                 SmartPointer<T>::set_data(data_ptr);
-                _ref_count = data_ptr != nullptr ? new uint16_t{ 1 } : nullptr;
+                _ref_count = data_ptr != nullptr ? new size_t{ 1 } : nullptr;
             }
             return *this;
         }
@@ -109,22 +109,20 @@ namespace DuinoMemory
         }
 
     private:
-        uint16_t* _ref_count{ };
+        size_t* _ref_count{ };
 
         void release(void)
         {
             auto data = SmartPointer<T>::get();
-            if (data == nullptr)
-            {
-                return;
-            }
-
-            (*_ref_count)--;
-
-            if (*_ref_count == 0)
-            {
-                delete data;
-                delete _ref_count;
+            if (data != nullptr)
+            {                
+                (*_ref_count)--;
+                
+                if (*_ref_count == 0)
+                {
+                    delete data;
+                    delete _ref_count;
+                }
             }
 
             SmartPointer<T>::set_data(nullptr);
