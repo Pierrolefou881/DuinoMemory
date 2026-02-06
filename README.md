@@ -44,7 +44,7 @@ Add the library to your project's `platformio.ini` file:
 #### Stable
 ```ini
 lib_deps =
-    https://github.com/Pierrolefou881/DuinoMemory.git#v1.0.0
+    https://github.com/Pierrolefou881/DuinoMemory.git#v1.1.0
 ```
 
 #### Development
