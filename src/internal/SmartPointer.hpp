@@ -27,7 +27,7 @@ namespace DuinoMemory
      * Base behavior for all smart pointers for Arduino. Smart pointers
      * manage memory deallocation automatically and greatly reduce risks
      * of memory leaks.
-     * @param T can be any type.
+     * @param T can be any type. CAUTION: arrays are not supported.
      */
     template<typename T>
     class SmartPointer
@@ -36,7 +36,7 @@ namespace DuinoMemory
         // Don't manage deallocation here, derived types shall do it.
         // _data is not destroyed in base class. Concrete types must ensure
         // proper memory deallocation according to their needs.
-        virtual ~SmartPointer(void) = default;
+        ~SmartPointer(void) = default;
 
         /**
          * @return _data member as a non mutable pointer.
@@ -80,16 +80,6 @@ namespace DuinoMemory
             return sp.get() == p;
         }
 
-        friend bool operator ==(const SmartPointer<T>& sp, const T& other)
-        {
-            return sp != nullptr && *sp == other;
-        }
-
-        friend bool operator ==(const T& other, const SmartPointer<T>& sp)
-        {
-            return sp == other;
-        }
-
         friend bool operator !=(const SmartPointer<T>& sp, const T* p)
         {
             return sp.get() != p;
@@ -98,16 +88,6 @@ namespace DuinoMemory
         friend bool operator !=(T* p, const SmartPointer<T>& sp)
         {
             return sp != p;
-        }
-
-        friend bool operator !=(const SmartPointer<T>& sp, const T& other)
-        {
-            return !(sp == other);
-        }
-
-        friend bool operator !=(const T& other, const SmartPointer<T>& sp)
-        {
-            return !(sp == other);
         }
 
     protected:

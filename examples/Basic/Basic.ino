@@ -86,6 +86,9 @@ void setup() {
   DuinoMemory::U_ptr<TestObject> bob = DuinoMemory::make_unique<TestObject>("Bob");
   u_test = DuinoMemory::make_unique<TestObject>();
 
+  // This should not compile -> array types not autorized.
+  // DuinoMemory::U_ptr<TestObject[]> _array_test = DuinoMemory::make_unique<TestObject[]>();
+
   (*bob).do_something();
   bob->do_something();
 

@@ -22,6 +22,7 @@
 #pragma once
 #include "SmartPointer.hpp"
 #include <stddef.h>
+#include <Arduino.h>
 
 namespace DuinoMemory
 {
@@ -29,7 +30,10 @@ namespace DuinoMemory
      * Pointer wrapper that automatically deallocates memory when
      * reference count to the pointed object drops to 0. This means
      * that several client objects can point to the same data.
-     * @param T can be any type.
+     * @param T can be any type. CAUTION: If T is a polymorphic type,
+     *          it must have a virtual destructor, otherwise deleting
+     *          the object may lead to undefined behavior and may cause
+     *          memory leaks or crashes.
      */
     template<typename T>
     class S_ptr final : public SmartPointer<T>
@@ -43,6 +47,10 @@ namespace DuinoMemory
         /**
          * Initializes this S_ptr with the provided pointer to data. If data not null,
          * increases the reference count to 1.
+         * CAUTION:S_ptr performs two dynamic allocations (object + reference counter).
+         * On small-memory boards (e.g. AVR), excessive creation/destruction of S_ptr
+         * may lead to heap fragmentation.
+         * Prefer static allocation or long-lived shared objects.
          * @param data pointer. Can be nullptr.
          */
         explicit S_ptr(T* data) : SmartPointer<T>{ data }
@@ -50,14 +58,22 @@ namespace DuinoMemory
             if (data != nullptr)
             {
                 _ref_count = new size_t{ 1 };
+
+                if (_ref_count == nullptr)
+                {
+                    delete data;
+                    SmartPointer<T>::set_data(nullptr);
+                }
             }
         }
 
         S_ptr(const S_ptr<T>& other) : SmartPointer<T>{ other.get() }, _ref_count{ other._ref_count }
         {
-            if (other.get() != nullptr)
+            if (other.get() != nullptr && _ref_count != nullptr)
             {
+                noInterrupts();
                 (*_ref_count)++;
+                interrupts();
             }
         }
 
@@ -88,6 +104,12 @@ namespace DuinoMemory
                 release();
                 SmartPointer<T>::set_data(data_ptr);
                 _ref_count = data_ptr != nullptr ? new size_t{ 1 } : nullptr;
+
+                if (_ref_count == nullptr)
+                {
+                    delete data_ptr;
+                    SmartPointer<T>::set_data(nullptr);
+                }
             }
             return *this;
         }
@@ -100,9 +122,11 @@ namespace DuinoMemory
                 auto other_data = other.get();
                 SmartPointer<T>::set_data(other_data);
                 _ref_count = other._ref_count;
-                if (other_data != nullptr)
+                if (other_data != nullptr && _ref_count != nullptr)
                 {
+                    noInterrupts();
                     (*_ref_count)++;
+                    interrupts();
                 }
             }
             return *this;
@@ -113,9 +137,16 @@ namespace DuinoMemory
 
         void release(void)
         {
+            if (_ref_count == nullptr)
+            {
+                SmartPointer<T>::set_data(nullptr);
+                return;
+            }
+
             auto data = SmartPointer<T>::get();
             if (data != nullptr)
-            {                
+            {    
+                noInterrupts();            
                 (*_ref_count)--;
                 
                 if (*_ref_count == 0)
@@ -123,6 +154,7 @@ namespace DuinoMemory
                     delete data;
                     delete _ref_count;
                 }
+                interrupts();
             }
 
             SmartPointer<T>::set_data(nullptr);
@@ -154,7 +186,9 @@ namespace DuinoMemory
     /**
      * Creates a new instance of S_ptr<t> holding a default initialized
      * instance of U.
-     * @param T can be any type.
+     * @param T can be any type. CAUTION: as a base type, T must have a virtual
+     *        destructor, otherwise deleting the base pointer may lead to
+     *        undefined behavior and cause memory leaks or crashes.
      * @param U is a derived type of T.
      * @return a new S_ptr<T> wrapping the newly instanced U.
      */
@@ -167,7 +201,9 @@ namespace DuinoMemory
     /**
      * Creates a new instance of S_ptr<t> holding a instance of U initialized
      * with given parameters.
-     * @param T can be any type.
+     * @param T can be any type. CAUTION: as a base type, T must have a virtual
+     *        destructor, otherwise deleting the base pointer may lead to
+     *        undefined behavior and cause memory leaks or crashes.
      * @param U is a derived type of T.
      * @param Args types of arguments.
      * @param args must match one of U's parameterized constructors.

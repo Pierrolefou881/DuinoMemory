@@ -28,8 +28,9 @@ namespace DuinoMemory
      * Pointer wrapper that automatically deallocates memory
      * when destroyed. U_ptr does not allow copying; ownership is transferred
      * on each assignment.
-     * @param T can be of any type. When using U_ptr<Base> with derived objects, 
-     *          Base must have a virtual destructor.
+     * @param T can be of any type. CAUTION: as a base type, T must have a virtual
+     *        destructor, otherwise deleting the base pointer may lead to
+     *        undefined behavior and cause memory leaks or crashes.
      */
     template<typename T>
     class U_ptr final : public SmartPointer<T>
@@ -138,7 +139,9 @@ namespace DuinoMemory
      * Creates a new instance of U_ptr<t> holding a default initialized
      * instance of U.
      * @param T can be any type.
-     * @param U is a derived type of T.
+     * @param U is a derived type of T. CAUTION: as a base type, T must have a virtual
+     *        destructor, otherwise deleting the base pointer may lead to
+     *        undefined behavior and cause memory leaks or crashes.
      * @return a new U_ptr<T> wrapping the newly instanced U.
      */
     template<typename T, typename U>
@@ -150,7 +153,9 @@ namespace DuinoMemory
     /**
      * Creates a new instance of U_ptr<t> holding a instance of U initialized
      * with given parameters.
-     * @param T can be any type.
+     * @param T can be any type. CAUTION: as a base type, T must have a virtual
+     *        destructor, otherwise deleting the base pointer may lead to
+     *        undefined behavior and cause memory leaks or crashes.
      * @param U is a derived type of T.
      * @param Args types of arguments.
      * @param args must match one of U's parameterized constructors.

@@ -7,18 +7,64 @@
 ![Arduino](https://img.shields.io/badge/Arduino-Compatible-00979D) [![PlatformIO Registry](https://badges.registry.platformio.org/packages/pierrolefou881/library/DuinoMemory.svg)](https://registry.platformio.org/libraries/pierrolefou881/DuinoMemory) ![Header Only](https://img.shields.io/badge/header--only-yes-brightgreen) ![License](https://img.shields.io/github/license/Pierrolefou881/DuinoMemory) ![C++](https://img.shields.io/badge/C%2B%2B-11%2F14-blue) ![Embedded Friendly](https://img.shields.io/badge/embedded-friendly-blue)
 
 
-Lightweight, header-only smart pointers and memory utilities for Arduino and 
-embedded platforms.
+Lightweight smart pointers for Arduino and embedded systems.
+Header-only, STL-inspired, designed for memory-constrained MCUs.
+
+Dynamic memory is one of the main causes of crashes on Arduino.
+DuinoMemory helps you manage heap allocation safely, preventing memory leaks, double deletes and ownership bugs — without the complexity or overhead of the full STL.
 
 Compatible with Arduino IDE and PlatformIO.
 
 License: MIT.
 
-## Design goals
+## Quick example
+```C++
+#include <DuinoMemory.hpp>
+using namespace DuinoMemory;
 
+S_ptr<Foo> ptr = make_shared<Foo>();
+
+if (ptr)
+{
+    ptr->do_something();
+}
+
+// Share ownership safely
+S_ptr<Foo> other = ptr;
+Serial.println(ptr.count()); // 2
+```
+
+## Why DuinoMemory?
+
+- Safer dynamic memory: prevent memory leaks, double deletes and ownership bugs.
+- Modern C++ and STL-like API (`make_unique`, `make_shared`).
+- Embedded-first design: header-only, lightweight, no exceptions, predictable 
+behavior.
+- Works with Arduino IDE and PlatformIO.
+- Designed for low-RAM boards and MCUs.
+- Interrupt-aware reference counting (`S_ptr`).
+- No STL required, no exceptions, no RTTI.
+- Works on AVR, SAMD, ESP32…
+
+Feel free to take a look at the [cheat-sheet](CHEATSHEET.md).
+
+## When should I use DuinoMemory?
+Use DuinoMemory when:
+- You need dynamic allocation with clear ownership
+- Objects are created/destroyed at runtime
+- Code complexity makes manual delete error-prone
+
+Avoid it when:
+- Static allocation is sufficient
+- Objects live for the entire program lifetime
+- Running in hard real-time or ISR contexts
+
+
+## Design goals
 - Provide simple, lightweight smart pointers for constrained embedded systems.
-- Avoid undefined behavior.
+- Avoid undefined behavior when used properly.
 - Stay close to `STL` semantics while remaining Arduino-friendly.
+- Predictable behavior on memory-constrained systems.
 
 ## Non-goals
 
@@ -44,7 +90,7 @@ Add the library to your project's `platformio.ini` file:
 #### Stable
 ```ini
 lib_deps =
-    https://github.com/Pierrolefou881/DuinoMemory.git#v1.1.0
+    https://github.com/Pierrolefou881/DuinoMemory.git#v1.1.1
 ```
 
 #### Development
@@ -60,9 +106,7 @@ The DuinoMemory library revolves around two concrete smart pointer types:
 pointer does not allow copying. A new assignment means destruction of previously
 held data and change of ownership between two instances of `U_ptr` via the
 `release()` method. It also destroys the object when it 
-goes out of scope. CAUTION: When using U_ptr<T> with polymorphic 
-types, T must have a virtual destructor to ensure correct 
-destruction of derived objects. `U_ptr` owns exactly one object at a time and 
+goes out of scope. `U_ptr` owns exactly one object at a time and 
 enforces single ownership.
 - `S_ptr`, similar to the C++ `STL` `std::shared_ptr`. This
 pointer counts the number of references to the object. When this
@@ -71,7 +115,7 @@ count drops to zero, the object gets destroyed.
 For ease of use the library only requires including the
 `DuinoMemory.hpp` header.
 
-## Examples
+## Basic usage
 
 ### Import library and declare pointers
 
@@ -80,122 +124,118 @@ For ease of use the library only requires including the
 #include <DuinoMemory.hpp>         // Import library.
 
 // Declare and initialize a null (nullptr) U_ptr.
-DuinoMemory::U_ptr<Foo> _foo{ };   
+DuinoMemory::U_ptr<Foo> foo{ };   
 
 // Declare and initialize a null (nullptr) S_ptr.
-DuinoMemory::S_ptr<Bar> _bar{ };   
+DuinoMemory::S_ptr<Bar> bar{ };   
 ```
 
-### Allocate new resources
+### Allocate and assign resources
 
 ```C++
-void some_func(Foo* some_ptr) {
-    // Using new operator is not recommended.
-    _foo = new Foo{ };  // Code smell; defeats the purpose of a smart pointer
-
-    // Ownership is transferred; the pointed object will be destroyed when 
-    // exiting the function.
-    _foo = some_ptr;                         
+void some_func(Foo* some_foo, Bar* some_bar) {
+    //-------------------------------------------------------------------------
+    // Common use cases
+    //-------------------------------------------------------------------------
 
     // Use allocation function (recommended).
-    _foo = DuinoMemory::make_unique<Foo>();       
+    foo = DuinoMemory::make_unique<Foo>();       
 
     // Also exists with parameters. The number and types of arguments must match 
     // an existing constructor of the template type.
-    _bar = DuinoMemory::make_shared<Bar>(param);  
+    bar = DuinoMemory::make_shared<Bar>(param);  
 
     // You can also make polymorphic instantiations with either S_ptr or U_ptr, 
-    // with or without parameters.
-    _bar = DuinoMemory::make_shared<Bar, BarDerived>(param); 
+    // with or without parameters. Make sure Bar has a virtual destructor.
+    bar = DuinoMemory::make_shared<Bar, BarDerived>(param);
 
-    // Very common use case. Sets reference count at 1. CAUTION: do not do it 
-    // with another S_ptr's raw pointer.
-    _bar = some_ptr;
-    _bar = some_s_ptr.get() // DANGER: undefined behavior.                    
+    // foo being a U_ptr, some_ptr will be destroyed when exiting the scope of
+    // this function. For that reason, some_ptr must not belong to any
+    // SmartPointer. Here foo takes ownership of some_ptr.
+    foo = some_foo;
+
+    // Initializes reference count at 1. Reference count decreases whenever one
+    // S_ptr referencing it is assigned a new value or goes out of scope. When
+    // count reaches 0, some_ptr will be destroyed. For that reason, some_bar 
+    // must not belong to any SmartPointer, as it may lead to undefined behavior.
+    bar = some_bar;
+
+    // Perfectly fine if the function allocates and returns a raw pointer or
+    // preferably in this case, a U_ptr<Foo>.
+    foo = a_function_returning_raw_or_unique();
+
+    // bar and bar2 point to the same object (reference count incremented).
+    DuinoMemory::S_ptr<Bar> bar2 = bar;
+    DuinoMemory::S_ptr<Bar> bar3{ bar };    // Copy ctor
+    size_t count = bar.count();  // 3
+
+    // Proper way of transferring ownership with U_ptr.
+    DuinoMemory::U_ptr<Foo> new_owner = foo.release();  // now foo == nullptr
+
+    // If you need to copy data (same method for S_ptr). Foo must have a
+    // copy constructor.
+    DuinoMemory::U_ptr<Foo> copy = DuinoMemory::make_unique<Foo>{ *foo };
+
+    //-------------------------------------------------------------------------
+    // Not recommended
+    //-------------------------------------------------------------------------
+    
+    // Code smell; defeats the purpose of a smart pointer
+    foo = new Foo{ };
+
+    //-------------------------------------------------------------------------
+    // DON'T DO THAT
+    //-------------------------------------------------------------------------
+
+    // Already belongs to foo. Undefined behavior.
+    DuinoMemory::U_ptr<Foo> foo_undefined = some_ptr;
+    DuinoMemory::S_ptr<Foo> foo_undefined_shared = some_ptr;
+
+    // Undefined behavior: double reference count. Whichever reaches zero first
+    // deletes the raw pointer.
+    DuinoMemory::S_ptr<Bar> bar_undefined = bar.get(); 
+
+    // Likewise, with U_ptr: double delete. Expect a crash.
+    DuinoMemory::U_ptr<Foo> other_undefined = foo.get(); 
+
+    //-------------------------------------------------------------------------
+    // COMPILATION ERROR
+    //-------------------------------------------------------------------------
+    
+    // U_ptr does not support copy.
+    DuinoMemory::U_ptr<Foo> foo_1{ foo };
+    foo_1 = foo;
 }
 ```
 
-### Allocation failure
-
-Although unusual, it may occur that memory allocation fails when instantiating a 
-new `SmartPointer`. Unfortunately, such an event can lead to undefined behaviors, 
-due to the variety of Arduino compatible hardware. Symptoms for an allocation
-failure include crashes, hard resets of the MCU or infinite loops. Moreover, the 
-Arduino environment does not provide reliable failsafes for all platforms:
-- Exceptions are not supported on most MCUs.
-- Assert requires Exceptions.
-- `std::nothrow` tends to induce UBs.
-
-As a result allocation failures cannot be managed efficiently on Arduino. This
-is a limitation one has to be aware of when developing on embedded systems. Most
-often, allocation failures are caused by:
-- Intantiation of large objects.
-- Recursive allocations / deallocations.
-- Heap fragmentation.
-- Stack overflows.
-- Heap / Stack collisions.
-
-#### Troubleshooting allocation failures
-
-In the event of memory allocation failures, here are a few things you can try:
-- Avoid deep recursion.
-- Avoid dynamic allocation.
-- Manage object lifecycle.
-- Allocate once (at `setup()` for instance).
-- Favor static storage.
-- Monitor `RAM` usage.
-
-You can use the `bool` operator on `SmartPointer` to ensure you are accessing non
-null data.
-
+### Arrays
+It is possible to create arrays or any kind of collection containing smart
+pointers, however bear in mind that managing dynamically allocated arrays can be 
+error-prone on embedded systems. 
 ```C++
-// If allocation crashed, _fail == nullptr.
-// On some platforms however, failure might reset the MCU before reaching such test.
-DuinoMemory::U_ptr<Foo> _fail{ DuinoMemory::make_unique<Foo>(params) };
+//-------------------------------------------------------------------------
+// Common use cases
+//-------------------------------------------------------------------------
+DuinoMemory::U_ptr<Foo> foo_array[capacity]; // OK
+DuinoMemory::S_ptr<Bar> bar_array[capacity]; // OK
 
-// Check nullptr
-if (_fail)
-{
-    _fail->do_something();
-}
-// If nullptr, log error, crash or implement failsafe
-else
-{
-    Serial.println("ERROR -> Allocation failed");
-}
-``` 
+//-------------------------------------------------------------------------
+// Not recommended
+//-------------------------------------------------------------------------
 
-### Assignment
-
-```C++
-// DuinoMemory::U_ptr<Foo> _foo_1{ };
-// _foo_1 = _foo                      // ERROR ! Copy assignment deleted.
-
-// _foo is now null (change of ownership).
-DuinoMemory::U_ptr<Foo> _foo_2 = _foo.release();  
-
-// _bar and _bar2 point to the same object (reference count incremented).
-DuinoMemory::S_ptr<Bar> _bar2 = _bar;
-size_t count = _bar.count();  // 2          
-
-// CAUTION: Do not initialize or assign a S_ptr with the raw pointer from 
-// another S_ptr; undefined behavior.
-DuinoMemory::S_ptr<Bar> _error{ _bar.get() };
-_error = _bar.get();
-
-// This is the correct way.
-DuinoMemory::S_ptr<Bar> _correct{ _bar };
-_correct = _bar;
+// Resizing will cause heap fragmentation that can lead to crashes and resets.
+DuinoMemory::U_ptr<Foo> foo_array = new DuinoMemory::U_ptr<Foo>[capacity];
+DuinoMemory::S_ptr<Bar> bar_array = new DuinoMemory::S_ptr<Bar>[capacity];
 ```
 
 ### Deallocation
 ```C++
 void cleanup() {
     // Object will be destroyed when exiting the function.
-    DuinoMemory::U_ptr<Foo> _tmp = _foo.release();          
+    DuinoMemory::U_ptr<Foo> _tmp = foo.release();          
 
     // Decrements the reference count. If it reaches 0, object gets destroyed.
-    _bar2 = nullptr;
+    bar2 = nullptr;
 }
 ```
 
@@ -205,60 +245,59 @@ void cleanup() {
 
 ```C++
 /**
- * Warning:
+ * Note:
  *   Dereferencing a null SmartPointer (* or ->) leads to 
  *   undefined behavior.
  *   Always check that the pointer is valid before dereferencing:
  *       if (ptr) { ptr->method(); }
  */
-if (_foo)
+if (foo)
 {
     // Dereference operator *
-    Foo copy = *_foo;
+    Foo copy = *foo;
 }
 
-if (_bar)
+if (bar)
 {
     // Dereference operator ->
-    _bar->method();
+    bar->method();
 }
 
 // Get the raw pointer (can be nullptr).
-Bar* ptr = _bar.get();
+Bar* ptr = bar.get();
 
 // get reference count (S_ptr only). If either raw pointer or reference count is 
 // nullptr, returns 0.
-size_t ref_count = _bar.count();
+size_t ref_count = bar.count();
 ```
 
 ### Operator bool
 
 The `bool` operator checks whether the smart pointer's raw pointer is null.
 ```C++
-if (_foo)               // Same as if (_foo != nullptr)
+if (foo)               // Same as if (foo != nullptr)
 {
     do_something();
 }
 
-if (!_foo)              // Same as if (_foo == nullptr)
+if (!foo)              // Same as if (foo == nullptr)
 {
     crash(ErrorCode::NULLPTR);
 }
 
 // Works also with S_ptr
-if (_bar)
+if (bar)
 {
-    _bar->do_something();
+    bar->do_something();
 }
 
-if (!_bar)
+if (!bar)
 {
     log("ERROR -> nullptr detected");
 }
 ```
 
 ### Polymorphic example
-
 ```C++
 struct Base {
     virtual void say() { Serial.println("Base"); }
@@ -283,6 +322,96 @@ Serial.println(sp.count()); // 2
 sp = nullptr;
 Serial.println(sp2.count()); // 1
 ```
+#### Note on polymorphism
+When using smart pointers with polymorphic types, the base type must have a 
+virtual destructor to ensure correct destruction of derived objects.
+Otherwise, deleting the object through a base pointer results in undefined 
+behavior and may cause memory leaks or crashes.
+
+```C++
+struct Base {
+    virtual ~Base() {}   // Required
+};
+
+struct Derived : Base {
+    ~Derived() {
+        // resources freed correctly
+    }
+};
+
+DuinoMemory::S_ptr<Base> ptr = DuinoMemory::make_shared<Base, Derived>(); // Safe
+DuinoMemory::U_ptr<Base> ptr2 = DuinoMemory::make_unique<Base, Derived>();// Safe
+
+```
+Rule of thumb:
+If you use inheritance with smart pointers, always make the base destructor 
+virtual.
+
+## Safety considerations and limitations
+DuinoMemory is designed for constrained embedded systems, but misusing smart 
+pointers may still lead to undefined behavior. Please be aware of the 
+following rules and  limitations:
+
+### Ownership
+- Never create multiple smart pointers from the same raw pointer.
+- Never give a raw pointer obtained via .get() to another smart pointer.
+- A pointer returned by .get() is non-owning.
+```cpp
+Foo* raw = new Foo();
+S_ptr<Foo> a{ raw };
+S_ptr<Foo> b{ raw };    // DANGER: double delete
+U_ptr<Foo> c = b.get(); // DANGER: double delete
+```
+- For `U_ptr`, always transfer ownership through `release()`.
+```C++
+U_ptr<Foo> a = make_unique<Foo>();
+U_ptr<Foo> b = a.release(); // SAFE, a == nullptr.
+```
+- For `S_ptr`, always share ownership through copy or assignment with another 
+`S_ptr`
+```C++
+S_ptr<Foo> a = make_shared<Foo>();
+S_ptr<Foo> b = a;      // SAFE
+S_ptr<Foo> c{ b };     // SAFE
+```
+
+Violating these rules may result in double delete, heap corruption, crashes or 
+MCU resets.
+
+### Concurrency / interrupts
+- S_ptr is not thread-safe.
+- Do not share smart pointers across tasks or threads.
+- Do not create or destroy S_ptr inside an ISR.
+- Object construction/destruction may call new/delete, which is unsafe in 
+interrupt context.
+- Reference counting uses interrupt protection, but this does not make S_ptr 
+interrupt-safe.
+
+
+### Memory behavior
+- S_ptr performs two allocations (object + reference counter).
+- Frequent creation/destruction may cause heap fragmentation, especially on small 
+AVR boards.
+- Prefer long-lived objects or static allocation when possible.
+
+### Array types
+- Array types (T[]) are not supported.
+- Arrays require delete[], which is intentionally avoided to prevent undefined 
+behavior.
+```C++
+// Undefined behavior.
+DuinoMemory::U_ptr<Foo[]> foo_array{ };    
+DuinoMemory::S_ptr<Bar[]> bar_array{ };    
+```
+
+### Allocation failures
+On many Arduino platforms, allocation failure may lead to:
+- MCU reset
+- freeze
+- undefined behavior
+
+Exceptions and reliable failure handling are generally unavailable.
+Always monitor RAM usage and minimize dynamic allocation.
 
 ## License
 
