@@ -1,10 +1,7 @@
 # DuinoMemory
 
-<!-- Arduino dynamic badge (enable when available)
-[![Arduino Library Manager](https://img.shields.io/arduino-library/v/DuinoMemory.svg)](https://www.arduino.cc/reference/en/libraries/duinomemory/)
--->
-
-![Arduino](https://img.shields.io/badge/Arduino-Compatible-00979D) [![PlatformIO Registry](https://badges.registry.platformio.org/packages/pierrolefou881/library/DuinoMemory.svg)](https://registry.platformio.org/libraries/pierrolefou881/DuinoMemory) ![Header Only](https://img.shields.io/badge/header--only-yes-brightgreen) ![License](https://img.shields.io/github/license/Pierrolefou881/DuinoMemory) ![C++](https://img.shields.io/badge/C%2B%2B-11%2F14-blue) ![Embedded Friendly](https://img.shields.io/badge/embedded-friendly-blue)
+[![Arduino Library](https://www.ardu-badge.com/badge/DuinoMemory.svg)](https://www.ardu-badge.com/DuinoMemory)
+ [![PlatformIO Registry](https://badges.registry.platformio.org/packages/pierrolefou881/library/DuinoMemory.svg)](https://registry.platformio.org/libraries/pierrolefou881/DuinoMemory) ![Header Only](https://img.shields.io/badge/header--only-yes-brightgreen) ![License](https://img.shields.io/github/license/Pierrolefou881/DuinoMemory) ![C++](https://img.shields.io/badge/C%2B%2B-11%2F14-blue) ![Embedded Friendly](https://img.shields.io/badge/embedded-friendly-blue)
 
 
 Lightweight smart pointers for Arduino and embedded systems.
